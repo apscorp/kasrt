@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kas RT 07 – Monitor Keuangan Transparan</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏘️</text></svg>">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  :root {
+    --hijau: #1D9E75;
+    --hijau-muda: #E1F5EE;
+    --hijau-tua: #085041;
+    --merah: #D85A30;
+    --merah-muda: #FAECE7;
+    --merah-tua: #993C1D;
+    --biru: #378ADD;
+    --biru-muda: #E6F1FB;
+    --biru-tua: #0C447C;
+    --abu-gelap: #2C2C2A;
+    --abu: #5F5E5A;
+    --abu-muda: #D3D1C7;
+    --abu-terang: #F1EFE8;
+    --putih: #ffffff;
+    --bg: #f5f4f0;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--abu-gelap);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    background: var(--putih);
+    border-bottom: 1px solid var(--abu-muda);
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 58px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow);
+  }
+  .topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .topbar-icon {
+    width: 34px; height: 34px;
+    background: var(--hijau);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .topbar-title { font-size: 17px; font-weight: 600; }
+  .topbar-sub { font-size: 12px; color: var(--abu); margin-top: 1px; }
+  .topbar-right { font-size: 12px; color: var(--abu); text-align: right; }
+
+  /* ── LAYOUT ── */
+  .container { max-width: 820px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex; gap: 4px;
+    background: var(--putih);
+    border: 1px solid var(--abu-muda);
+    border-radius: var(--radius);
+    padding: 5px;
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+  }
+  .tab-btn {
+    flex: 1; min-width: 110px;
+    padding: 9px 14px;
+    border: none; border-radius: var(--radius-sm);
+    background: transparent; cursor: pointer;
+    font-size: 13px; font-weight: 500;
+    color: var(--abu);
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .tab-btn.active {
+    background: var(--hijau);
+    color: var(--putih);
+    box-shadow: var(--shadow);
+  }
+  .tab-btn:not(.active):hover { background: var(--abu-terang); }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--putih);
+    border: 1px solid var(--abu-muda);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    box-shadow: var(--shadow);
+  }
+  .card + .card, .card + .metrics, .metrics + .card { margin-top: 1rem; }
+
+  /* ── METRICS ── */
+  .metrics { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 1rem; }
+  .metric {
+    background: var(--putih);
+    border: 1px solid var(--abu-muda);
+    border-radius: var(--radius);
+    padding: 1rem;
+    box-shadow: var(--shadow);
+  }
+  .metric .m-label { font-size: 12px; color: var(--abu); margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+  .metric .m-value { font-size: 21px; font-weight: 700; }
+  .metric .m-sub { font-size: 11px; color: var(--abu); margin-top: 3px; }
+  .green { color: var(--hijau); }
+  .red { color: var(--merah); }
+  .blue { color: var(--biru); }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--abu);
+    margin: 1.25rem 0 0.75rem;
+  }
+
+  /* ── TRANSAKSI LIST ── */
+  .tx-list { display: flex; flex-direction: column; gap: 6px; }
+  .tx-item {
+    background: var(--putih);
+    border: 1px solid var(--abu-muda);
+    border-radius: var(--radius);
+    padding: 11px 14px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: var(--shadow);
+  }
+  .tx-dot {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; flex-shrink: 0;
+  }
+  .tx-dot.in { background: var(--hijau-muda); }
+  .tx-dot.out { background: var(--merah-muda); }
+  .tx-body { flex: 1; min-width: 0; }
+  .tx-desc { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tx-meta { font-size: 12px; color: var(--abu); margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+  .tx-amount { font-size: 14px; font-weight: 700; white-space: nowrap; }
+  .tx-amount.in { color: var(--hijau); }
+  .tx-amount.out { color: var(--merah); }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    padding: 2px 9px; border-radius: 20px;
+  }
+  .badge-cat { background: var(--abu-terang); color: var(--abu); }
+  .badge-lunas { background: var(--hijau-muda); color: var(--hijau-tua); }
+  .badge-belum { background: var(--merah-muda); color: var(--merah-tua); }
+  .badge-info { background: var(--biru-muda); color: var(--biru-tua); }
+
+  /* ── CHART BARS ── */
+  .chart-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .chart-label { font-size: 12px; color: var(--abu); width: 40px; text-align: right; flex-shrink: 0; }
+  .chart-bars { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+  .bar-bg { background: var(--abu-terang); border-radius: 4px; height: 18px; overflow: hidden; }
+  .bar-fill {
+    height: 100%; border-radius: 4px;
+    display: flex; align-items: center; padding-left: 8px;
+    transition: width 0.5s cubic-bezier(.4,0,.2,1);
+    min-width: 0;
+  }
+  .bar-fill span { font-size: 10px; color: var(--putih); font-weight: 600; white-space: nowrap; }
+  .bar-fill.in { background: var(--hijau); }
+  .bar-fill.out { background: var(--merah); }
+
+  /* ── LEGEND ── */
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--abu); margin-bottom: 10px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 5px; }
+
+  /* ── IURAN ── */
+  .month-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1rem; }
+  .month-pill {
+    padding: 5px 13px; border: 1px solid var(--abu-muda);
+    border-radius: 20px; background: var(--putih); cursor: pointer;
+    font-size: 12px; font-weight: 500; color: var(--abu);
+    transition: all 0.15s;
+  }
+  .month-pill.active { background: var(--hijau); color: var(--putih); border-color: var(--hijau); }
+
+  .iuran-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--abu-terang);
+  }
+  .iuran-item:last-child { border-bottom: none; }
+  .iuran-nama { font-size: 14px; font-weight: 500; }
+  .iuran-blok { font-size: 12px; color: var(--abu); }
+
+  /* ── FORM ── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-group label { font-size: 12px; font-weight: 600; color: var(--abu); }
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 9px 12px; border: 1px solid var(--abu-muda);
+    border-radius: var(--radius-sm); font-size: 14px;
+    color: var(--abu-gelap); background: var(--bg);
+    width: 100%; outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-group input:focus,
+  .form-group select:focus { border-color: var(--hijau); background: var(--putih); }
+
+  .type-toggle { display: flex; gap: 6px; }
+  .type-btn {
+    flex: 1; padding: 9px; border: 1px solid var(--abu-muda);
+    border-radius: var(--radius-sm); cursor: pointer;
+    font-size: 13px; font-weight: 500; background: var(--bg);
+    color: var(--abu); text-align: center; transition: all 0.15s;
+  }
+  .type-btn.active-in { background: var(--hijau-muda); color: var(--hijau-tua); border-color: var(--hijau); }
+  .type-btn.active-out { background: var(--merah-muda); color: var(--merah-tua); border-color: var(--merah); }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 9px 18px; border: none; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--hijau); color: var(--putih); }
+  .btn-primary:hover { background: var(--hijau-tua); }
+  .btn-full { width: 100%; }
+  .btn-danger { background: var(--merah); color: var(--putih); }
+  .btn-outline {
+    background: var(--putih); border: 1px solid var(--abu-muda);
+    color: var(--abu-gelap);
+  }
+  .btn-outline:hover { background: var(--abu-terang); }
+  .btn-pdf { background: #C62828; color: var(--putih); }
+  .btn-pdf:hover { background: #8B1A1A; }
+
+  /* ── PIN GATE ── */
+  .pin-gate {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 2.5rem 0; gap: 16px; text-align: center;
+  }
+  .pin-icon { font-size: 48px; }
+  .pin-gate h3 { font-size: 18px; font-weight: 600; }
+  .pin-gate p { font-size: 14px; color: var(--abu); max-width: 280px; }
+  .pin-row { display: flex; gap: 10px; }
+  .pin-row input {
+    padding: 10px 14px; border: 1.5px solid var(--abu-muda);
+    border-radius: var(--radius-sm); font-size: 16px; width: 140px;
+    text-align: center; letter-spacing: 0.2em; outline: none;
+    background: var(--bg);
+  }
+  .pin-row input:focus { border-color: var(--hijau); background: var(--putih); }
+  .pin-error { color: var(--merah); font-size: 13px; font-weight: 500; }
+
+  /* ── BANNER ── */
+  .banner {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 11px 14px; border-radius: var(--radius-sm);
+    font-size: 13px; margin-bottom: 1rem;
+  }
+  .banner-info { background: var(--biru-muda); color: var(--biru-tua); }
+  .banner-success { background: var(--hijau-muda); color: var(--hijau-tua); }
+  .banner-warn { background: #FAEEDA; color: #854F0B; }
+
+  /* ── EXPORT BUTTONS ── */
+  .export-bar {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    padding: 12px 14px;
+    background: var(--abu-terang);
+    border-radius: var(--radius-sm);
+    margin-bottom: 1rem;
+    align-items: center;
+  }
+  .export-bar span { font-size: 12px; font-weight: 600; color: var(--abu); flex: 1; }
+
+  /* ── DIVIDER ── */
+  .divider { height: 1px; background: var(--abu-terang); margin: 1rem 0; }
+
+  /* ── EMPTY ── */
+  .empty { text-align: center; padding: 2.5rem; color: var(--abu); font-size: 14px; }
+
+  /* ── IURAN BENDAHARA TOGGLE ── */
+  .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; inset: 0; background: var(--abu-muda);
+    border-radius: 24px; cursor: pointer; transition: 0.2s;
+  }
+  .toggle-slider:before {
+    content: ''; position: absolute; width: 18px; height: 18px;
+    left: 3px; top: 3px; background: var(--putih); border-radius: 50%; transition: 0.2s;
+  }
+  input:checked + .toggle-slider { background: var(--hijau); }
+  input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+  /* ── HIDDEN ── */
+  .hidden { display: none !important; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .metrics { grid-template-columns: repeat(2,1fr); }
+    .metrics .metric:last-child { grid-column: 1 / -1; }
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group.full { grid-column: 1; }
+    .topbar-sub { display: none; }
+    .tab-btn { font-size: 12px; padding: 8px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-icon">🏘️</div>
+    <div>
+      <div class="topbar-title">Kas RT 07</div>
+      <div class="topbar-sub">Perumahan Griya Asri — Monitor Keuangan Transparan</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    Iuran: <strong>Rp 20.000 / KK / bulan</strong><br>
+    <span id="clock" style="font-size:11px"></span>
+  </div>
+</div>
+
+<div class="container">
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('dashboard',this)">📊 Ringkasan</button>
+    <button class="tab-btn" onclick="showTab('iuran',this)">👥 Iuran</button>
+    <button class="tab-btn" onclick="showTab('riwayat',this)">📋 Riwayat</button>
+    <button class="tab-btn" onclick="showTab('laporan',this)">📄 Laporan PDF</button>
+    <button class="tab-btn" onclick="showTab('bendahara',this)">🔐 Bendahara</button>
+  </div>
+
+  <!-- ═══ TAB: DASHBOARD ═══ -->
+  <div id="tab-dashboard">
+    <div class="metrics" id="metrics-area"></div>
+
+    <div class="banner banner-info">
+      ℹ️ Seluruh warga dapat memantau kas ini secara langsung. Transparansi untuk kepercayaan bersama.
+    </div>
+
+    <div class="section-title">Pemasukan vs Pengeluaran — 6 Bulan Terakhir</div>
+    <div class="card">
+      <div class="legend">
+        <span><span class="legend-dot" style="background:var(--hijau);"></span>Pemasukan</span>
+        <span><span class="legend-dot" style="background:var(--merah);"></span>Pengeluaran</span>
+      </div>
+      <div id="chart-area"></div>
+    </div>
+
+    <div class="section-title">Transaksi Terbaru</div>
+    <div class="tx-list" id="tx-recent"></div>
+  </div>
+
+  <!-- ═══ TAB: IURAN ═══ -->
+  <div id="tab-iuran" class="hidden">
+    <div class="month-pills" id="iuran-pills"></div>
+    <div id="iuran-metrics" class="metrics"></div>
+    <div class="card" style="padding:0">
+      <div id="iuran-list"></div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB: RIWAYAT ═══ -->
+  <div id="tab-riwayat" class="hidden">
+    <div class="section-title">Semua Transaksi</div>
+    <div class="tx-list" id="tx-all"></div>
+  </div>
+
+  <!-- ═══ TAB: LAPORAN PDF ═══ -->
+  <div id="tab-laporan" class="hidden">
+    <div class="banner banner-info">
+      📄 Cetak laporan keuangan resmi dalam format PDF. Cocok untuk rapat warga dan arsip RT.
+    </div>
+
+    <div class="card" style="margin-bottom:1rem">
+      <div style="font-size:15px;font-weight:600;margin-bottom:1rem">📊 Laporan Rekap Bulanan</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Bulan</label>
+          <select id="pdf-bulan">
+            <option value="0">Januari</option><option value="1">Februari</option>
+            <option value="2">Maret</option><option value="3">April</option>
+            <option value="4">Mei</option><option value="5">Juni</option>
+            <option value="6">Juli</option><option value="7">Agustus</option>
+            <option value="8">September</option><option value="9">Oktober</option>
+            <option value="10">November</option><option value="11">Desember</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tahun</label>
+          <select id="pdf-tahun">
+            <option>2025</option><option>2026</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn btn-pdf btn-full" onclick="exportPdfBulanan()">
+          🖨️ Unduh Laporan Bulanan PDF
+        </button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem">
+      <div style="font-size:15px;font-weight:600;margin-bottom:1rem">📋 Laporan Iuran Warga</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Bulan</label>
+          <select id="pdf-iuran-bulan">
+            <option value="0">Januari</option><option value="1">Februari</option>
+            <option value="2">Maret</option><option value="3">April</option>
+            <option value="4">Mei</option><option value="5" selected>Juni</option>
+            <option value="6">Juli</option><option value="7">Agustus</option>
+            <option value="8">September</option><option value="9">Oktober</option>
+            <option value="10">November</option><option value="11">Desember</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tahun</label>
+          <select id="pdf-iuran-tahun">
+            <option>2025</option><option>2026</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn btn-pdf btn-full" onclick="exportPdfIuran()">
+          🖨️ Unduh Laporan Iuran PDF
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-size:15px;font-weight:600;margin-bottom:1rem">📈 Laporan Lengkap Semua Waktu</div>
+      <p style="font-size:13px;color:var(--abu);margin-bottom:1rem">
+        Mencakup seluruh riwayat transaksi, rekap saldo, dan daftar iuran semua bulan.
+      </p>
+      <button class="btn btn-pdf btn-full" onclick="exportPdfLengkap()">
+        🖨️ Unduh Laporan Lengkap PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ TAB: BENDAHARA ═══ -->
+  <div id="tab-bendahara" class="hidden">
+    <!-- PIN GATE -->
+    <div id="pin-gate">
+      <div class="card">
+        <div class="pin-gate">
+          <div class="pin-icon">🔐</div>
+          <h3>Area Bendahara</h3>
+          <p>Masukkan PIN bendahara untuk mengakses fitur pencatatan keuangan.</p>
+          <div class="pin-row">
+            <input type="password" id="pin-input" maxlength="6" placeholder="• • • • • •"
+              onkeydown="if(event.key==='Enter')checkPin()" />
+            <button class="btn btn-primary" onclick="checkPin()">Masuk</button>
+          </div>
+          <div id="pin-err" class="pin-error hidden">❌ PIN salah. Coba lagi.</div>
+          <p style="font-size:11px;color:var(--abu-muda);margin-top:4px">Default PIN: 1234</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- BENDAHARA PANEL -->
+    <div id="bendahara-panel" class="hidden">
+      <div class="banner banner-success">
+        ✅ Mode Bendahara aktif. Semua perubahan langsung terlihat oleh warga.
+        <button onclick="logout()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--hijau-tua);font-size:12px;font-weight:600">Keluar</button>
+      </div>
+
+      <!-- Form Tambah Transaksi -->
+      <div class="card" style="margin-bottom:1rem">
+        <div style="font-size:15px;font-weight:600;margin-bottom:1rem">➕ Tambah Transaksi</div>
+        <div style="margin-bottom:12px">
+          <div style="font-size:12px;font-weight:600;color:var(--abu);margin-bottom:6px">Jenis Transaksi</div>
+          <div class="type-toggle">
+            <button class="type-btn active-in" id="btn-in" onclick="setType('in')">⬇️ Pemasukan</button>
+            <button class="type-btn" id="btn-out" onclick="setType('out')">⬆️ Pengeluaran</button>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Deskripsi</label>
+            <input type="text" id="f-desc" placeholder="cth: Iuran Warga Juni 2025" />
+          </div>
+          <div class="form-group">
+            <label>Jumlah (Rp)</label>
+            <input type="number" id="f-amount" placeholder="0" min="0" />
+          </div>
+          <div class="form-group">
+            <label>Tanggal</label>
+            <input type="date" id="f-date" />
+          </div>
+          <div class="form-group">
+            <label>Kategori</label>
+            <select id="f-cat">
+              <option>Iuran Warga</option>
+              <option>Keamanan</option>
+              <option>Kebersihan</option>
+              <option>Perbaikan Fasilitas</option>
+              <option>Kegiatan Sosial</option>
+              <option>Administrasi</option>
+              <option>Lainnya</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <button class="btn btn-primary btn-full" onclick="tambahTx()">💾 Simpan Transaksi</button>
+        </div>
+        <div id="tx-success" class="banner banner-success hidden" style="margin-top:10px;margin-bottom:0">
+          ✅ Transaksi berhasil disimpan!
+        </div>
+      </div>
+
+      <!-- Update Status Iuran -->
+      <div class="card">
+        <div style="font-size:15px;font-weight:600;margin-bottom:1rem">✅ Update Status Iuran</div>
+        <div class="form-group" style="margin-bottom:1rem">
+          <label>Pilih Bulan</label>
+          <select id="iuran-bln-sel" onchange="renderIuranEdit()">
+            <option>Juni 2025</option><option>Mei 2025</option><option>April 2025</option>
+            <option>Maret 2025</option><option>Februari 2025</option><option>Januari 2025</option>
+          </select>
+        </div>
+        <div class="card" style="padding:0;border-color:var(--abu-terang)">
+          <div id="iuran-edit-list"></div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <!-- Ganti PIN -->
+      <div class="card">
+        <div style="font-size:15px;font-weight:600;margin-bottom:1rem">🔑 Ganti PIN Bendahara</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>PIN Lama</label>
+            <input type="password" id="pin-lama" maxlength="6" placeholder="••••" />
+          </div>
+          <div class="form-group">
+            <label>PIN Baru</label>
+            <input type="password" id="pin-baru" maxlength="6" placeholder="••••" />
+          </div>
+        </div>
+        <button class="btn btn-outline" style="margin-top:10px" onclick="gantiPin()">🔄 Ganti PIN</button>
+        <div id="pin-change-msg" style="font-size:13px;margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+/* ══════════════════════════════════════════
+   DATA & STATE
+══════════════════════════════════════════ */
+const BULAN_NAMA = ['Januari','Februari','Maret','April','Mei','Juni',
+                    'Juli','Agustus','September','Oktober','November','Desember'];
+const BULAN_6 = ['Januari 2025','Februari 2025','Maret 2025','April 2025','Mei 2025','Juni 2025'];
+
+const WARGA = [
+  {id:1, nama:'Pak Budi Santoso',    blok:'A-01'},
+  {id:2, nama:'Ibu Sari Dewi',       blok:'A-02'},
+  {id:3, nama:'Pak Hendra Wijaya',   blok:'A-03'},
+  {id:4, nama:'Ibu Fitri Rahayu',    blok:'A-04'},
+  {id:5, nama:'Pak Darmawan',        blok:'B-01'},
+  {id:6, nama:'Ibu Kartini',         blok:'B-02'},
+  {id:7, nama:'Pak Eko Prasetyo',    blok:'B-03'},
+  {id:8, nama:'Ibu Nuraini',         blok:'B-04'},
+  {id:9, nama:'Pak Joko Susilo',     blok:'C-01'},
+  {id:10,nama:'Ibu Marlina',         blok:'C-02'},
+  {id:11,nama:'Pak Ridwan',          blok:'C-03'},
+  {id:12,nama:'Ibu Sumiati',         blok:'C-04'},
+];
+
+let txData = [], iuranData = {}, activeTab = 'dashboard', txType = 'in';
+let selIuranMonth = 'Juni 2025';
+let bendaharaPin = lsGet('kas_pin') || '1234';
+
+function lsGet(k){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch(e){return null;} }
+function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+
+function initData(){
+  const stored = lsGet('kas_tx');
+  txData = stored || [
+    {id:1,tipe:'in', desc:'Iuran Warga Januari 2025', jumlah:220000,cat:'Iuran Warga',tgl:'2025-01-05'},
+    {id:2,tipe:'out',desc:'Bayar tukang kebersihan',   jumlah:150000,cat:'Kebersihan',  tgl:'2025-01-12'},
+    {id:3,tipe:'in', desc:'Iuran Warga Februari 2025', jumlah:240000,cat:'Iuran Warga',tgl:'2025-02-04'},
+    {id:4,tipe:'out',desc:'Perbaikan lampu jalan blok B',jumlah:95000,cat:'Perbaikan Fasilitas',tgl:'2025-02-18'},
+    {id:5,tipe:'in', desc:'Iuran Warga Maret 2025',    jumlah:240000,cat:'Iuran Warga',tgl:'2025-03-03'},
+    {id:6,tipe:'out',desc:'Bayar satpam Maret',         jumlah:500000,cat:'Keamanan',   tgl:'2025-03-28'},
+    {id:7,tipe:'in', desc:'Iuran Warga April 2025',    jumlah:220000,cat:'Iuran Warga',tgl:'2025-04-05'},
+    {id:8,tipe:'out',desc:'Cat pagar jalan masuk',      jumlah:180000,cat:'Perbaikan Fasilitas',tgl:'2025-04-20'},
+    {id:9,tipe:'in', desc:'Iuran Warga Mei 2025',      jumlah:240000,cat:'Iuran Warga',tgl:'2025-05-03'},
+    {id:10,tipe:'out',desc:'Bayar satpam Mei',          jumlah:500000,cat:'Keamanan',   tgl:'2025-05-30'},
+    {id:11,tipe:'in', desc:'Iuran Warga Juni 2025',    jumlah:200000,cat:'Iuran Warga',tgl:'2025-06-02'},
+    {id:12,tipe:'out',desc:'ATK dan administrasi',      jumlah:45000, cat:'Administrasi',tgl:'2025-06-04'},
+  ];
+
+  const storedI = lsGet('kas_iuran');
+  iuranData = storedI || {};
+  BULAN_6.forEach(bln => {
+    if(!iuranData[bln]){
+      iuranData[bln] = {};
+      WARGA.forEach((w,i) => { iuranData[bln][w.id] = i < 9; });
+    }
+  });
+}
+
+/* ══════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════ */
+const fmt = n => 'Rp ' + Math.round(n).toLocaleString('id-ID');
+const fmtNum = n => Math.round(n).toLocaleString('id-ID');
+function fmtDate(s){ const d=new Date(s); return d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}); }
+
+function totalMasuk(list){ return list.filter(t=>t.tipe==='in').reduce((s,t)=>s+t.jumlah,0); }
+function totalKeluar(list){ return list.filter(t=>t.tipe==='out').reduce((s,t)=>s+t.jumlah,0); }
+
+function txByMonth(thn,bln){
+  const prefix = `${thn}-${String(bln+1).padStart(2,'0')}`;
+  return txData.filter(t=>t.tgl.startsWith(prefix));
+}
+
+/* ══════════════════════════════════════════
+   TABS
+══════════════════════════════════════════ */
+function showTab(tab, btn){
+  ['dashboard','iuran','riwayat','laporan','bendahara'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.add('hidden');
+  });
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.remove('hidden');
+  if(btn) btn.classList.add('active');
+  activeTab = tab;
+  if(tab==='dashboard') renderDashboard();
+  else if(tab==='iuran') renderIuran();
+  else if(tab==='riwayat') renderRiwayat();
+}
+
+/* ══════════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════════ */
+function renderDashboard(){
+  const masuk = totalMasuk(txData);
+  const keluar = totalKeluar(txData);
+  const saldo = masuk - keluar;
+  const jml_kk = WARGA.length;
+  
+  document.getElementById('metrics-area').innerHTML = `
+    <div class="metric">
+      <div class="m-label">💰 Saldo Kas</div>
+      <div class="m-value green">${fmt(saldo)}</div>
+      <div class="m-sub">Dana tersedia</div>
+    </div>
+    <div class="metric">
+      <div class="m-label">⬇️ Total Pemasukan</div>
+      <div class="m-value">${fmt(masuk)}</div>
+      <div class="m-sub">Semua waktu</div>
+    </div>
+    <div class="metric">
+      <div class="m-label">⬆️ Total Pengeluaran</div>
+      <div class="m-value red">${fmt(keluar)}</div>
+      <div class="m-sub">Semua waktu</div>
+    </div>
+  `;
+
+  // Chart 6 bulan
+  const months = ['Jan','Feb','Mar','Apr','Mei','Jun'];
+  const monthFull = BULAN_6;
+  const max = Math.max(...monthFull.map((_,i)=>{
+    const m = txByMonth(2025,i);
+    return Math.max(totalMasuk(m),totalKeluar(m));
+  }), 100000);
+
+  let chartHtml = '';
+  months.forEach((lbl,i) => {
+    const m = txByMonth(2025,i);
+    const mk = totalMasuk(m), kl = totalKeluar(m);
+    const pMk = Math.max(Math.round(mk/max*100),0);
+    const pKl = Math.max(Math.round(kl/max*100),0);
+    chartHtml += `<div class="chart-row">
+      <div class="chart-label">${lbl}</div>
+      <div class="chart-bars">
+        <div class="bar-bg" title="Pemasukan: ${fmt(mk)}">
+          <div class="bar-fill in" style="width:${pMk}%">${mk>0?'<span>'+fmt(mk)+'</span>':''}</div>
+        </div>
+        <div class="bar-bg" title="Pengeluaran: ${fmt(kl)}">
+          <div class="bar-fill out" style="width:${pKl}%">${kl>0?'<span>'+fmt(kl)+'</span>':''}</div>
+        </div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('chart-area').innerHTML = chartHtml;
+
+  const recent = [...txData].sort((a,b)=>b.tgl.localeCompare(a.tgl)).slice(0,5);
+  document.getElementById('tx-recent').innerHTML = recent.map(txHtml).join('') || '<div class="empty">Belum ada transaksi.</div>';
+}
+
+function txHtml(t){
+  return `<div class="tx-item">
+    <div class="tx-dot ${t.tipe}">${t.tipe==='in'?'⬇️':'⬆️'}</div>
+    <div class="tx-body">
+      <div class="tx-desc">${t.desc}</div>
+      <div class="tx-meta">${fmtDate(t.tgl)} <span class="badge badge-cat">${t.cat}</span></div>
+    </div>
+    <div class="tx-amount ${t.tipe}">${t.tipe==='in'?'+':'-'}${fmt(t.jumlah)}</div>
+  </div>`;
+}
+
+/* ══════════════════════════════════════════
+   IURAN
+══════════════════════════════════════════ */
+function renderIuran(){
+  const months = [...BULAN_6].reverse();
+  document.getElementById('iuran-pills').innerHTML = months.map(m=>
+    `<button class="month-pill ${m===selIuranMonth?'active':''}" onclick="selMonth('${m}')">${m}</button>`
+  ).join('');
+
+  const data = iuranData[selIuranMonth] || {};
+  const lunas = WARGA.filter(w=>data[w.id]).length;
+  const belum = WARGA.length - lunas;
+  const persen = Math.round(lunas/WARGA.length*100);
+
+  document.getElementById('iuran-metrics').innerHTML = `
+    <div class="metric">
+      <div class="m-label">👥 Total KK</div>
+      <div class="m-value blue">${WARGA.length}</div>
+    </div>
+    <div class="metric">
+      <div class="m-label">✅ Sudah Bayar</div>
+      <div class="m-value green">${lunas} KK</div>
+      <div class="m-sub">${fmt(lunas*20000)}</div>
+    </div>
+    <div class="metric">
+      <div class="m-label">❌ Belum Bayar</div>
+      <div class="m-value red">${belum} KK</div>
+      <div class="m-sub">${fmt(belum*20000)} belum masuk</div>
+    </div>
+  `;
+
+  document.getElementById('iuran-list').innerHTML = WARGA.map(w=>{
+    const ok = data[w.id];
+    return `<div class="iuran-item">
+      <div>
+        <div class="iuran-nama">${w.nama}</div>
+        <div class="iuran-blok">Blok ${w.blok}</div>
+      </div>
+      <span class="badge ${ok?'badge-lunas':'badge-belum'}">${ok?'✓ Lunas':'✗ Belum Bayar'}</span>
+    </div>`;
+  }).join('');
+}
+
+function selMonth(m){ selIuranMonth=m; renderIuran(); }
+
+/* ══════════════════════════════════════════
+   RIWAYAT
+══════════════════════════════════════════ */
+function renderRiwayat(){
+  const sorted = [...txData].sort((a,b)=>b.tgl.localeCompare(a.tgl));
+  document.getElementById('tx-all').innerHTML = sorted.length
+    ? sorted.map(txHtml).join('')
+    : '<div class="empty">Belum ada transaksi.</div>';
+}
+
+/* ══════════════════════════════════════════
+   BENDAHARA
+══════════════════════════════════════════ */
+function checkPin(){
+  const v = document.getElementById('pin-input').value;
+  if(v === bendaharaPin){
+    document.getElementById('pin-gate').classList.add('hidden');
+    document.getElementById('bendahara-panel').classList.remove('hidden');
+    document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+    renderIuranEdit();
+  } else {
+    document.getElementById('pin-err').classList.remove('hidden');
+    document.getElementById('pin-input').value = '';
+  }
+}
+
+function logout(){
+  document.getElementById('pin-gate').classList.remove('hidden');
+  document.getElementById('bendahara-panel').classList.add('hidden');
+  document.getElementById('pin-input').value = '';
+  document.getElementById('pin-err').classList.add('hidden');
+}
+
+function setType(t){
+  txType = t;
+  document.getElementById('btn-in').className = 'type-btn' + (t==='in'?' active-in':'');
+  document.getElementById('btn-out').className = 'type-btn' + (t==='out'?' active-out':'');
+}
+
+function tambahTx(){
+  const desc = document.getElementById('f-desc').value.trim();
+  const jumlah = parseFloat(document.getElementById('f-amount').value);
+  const tgl = document.getElementById('f-date').value;
+  const cat = document.getElementById('f-cat').value;
+  if(!desc||!jumlah||!tgl){ alert('Lengkapi semua field!'); return; }
+  
+  txData.push({ id:Date.now(), tipe:txType, desc, jumlah:Math.round(jumlah), cat, tgl });
+  lsSet('kas_tx', txData);
+
+  document.getElementById('f-desc').value = '';
+  document.getElementById('f-amount').value = '';
+  
+  const s = document.getElementById('tx-success');
+  s.classList.remove('hidden');
+  setTimeout(()=>s.classList.add('hidden'), 2500);
+}
+
+function renderIuranEdit(){
+  const bln = document.getElementById('iuran-bln-sel').value;
+  if(!iuranData[bln]){ iuranData[bln]={}; WARGA.forEach(w=>{ iuranData[bln][w.id]=false; }); }
+  const data = iuranData[bln];
+  document.getElementById('iuran-edit-list').innerHTML = WARGA.map(w=>`
+    <div class="iuran-item">
+      <div>
+        <div class="iuran-nama">${w.nama}</div>
+        <div class="iuran-blok">Blok ${w.blok}</div>
+      </div>
+      <label class="toggle-switch" title="${data[w.id]?'Klik untuk tandai belum bayar':'Klik untuk tandai lunas'}">
+        <input type="checkbox" ${data[w.id]?'checked':''} onchange="toggleIuran(${w.id},'${bln}',this.checked)" />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  `).join('');
+}
+
+function toggleIuran(id, bln, val){
+  if(!iuranData[bln]) iuranData[bln]={};
+  iuranData[bln][id] = val;
+  lsSet('kas_iuran', iuranData);
+}
+
+function gantiPin(){
+  const lama = document.getElementById('pin-lama').value;
+  const baru = document.getElementById('pin-baru').value;
+  const msg = document.getElementById('pin-change-msg');
+  if(lama !== bendaharaPin){ msg.style.color='var(--merah)'; msg.textContent='❌ PIN lama salah.'; return; }
+  if(baru.length < 4){ msg.style.color='var(--merah)'; msg.textContent='❌ PIN baru minimal 4 digit.'; return; }
+  bendaharaPin = baru;
+  lsSet('kas_pin', baru);
+  msg.style.color='var(--hijau)'; msg.textContent='✅ PIN berhasil diubah!';
+  document.getElementById('pin-lama').value='';
+  document.getElementById('pin-baru').value='';
+}
+
+/* ══════════════════════════════════════════
+   EXPORT PDF — SHARED HELPERS
+══════════════════════════════════════════ */
+function pdfHeader(doc, judul, subjudul){
+  const W = doc.internal.pageSize.getWidth();
+  doc.setFillColor(29,158,117);
+  doc.rect(0,0,W,28,F='F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(16); doc.setFont(undefined,'bold');
+  doc.text('KAS RT 07 – Perumahan Griya Asri', W/2, 11, {align:'center'});
+  doc.setFontSize(9); doc.setFont(undefined,'normal');
+  doc.text(judul, W/2, 19, {align:'center'});
+  doc.setTextColor(40,40,40);
+  doc.setFontSize(8);
+  doc.text('Dicetak: ' + new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'}), W/2, 35, {align:'center'});
+  if(subjudul){ doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.text(subjudul, W/2, 43, {align:'center'}); }
+  doc.setFont(undefined,'normal');
+  return subjudul ? 50 : 42;
+}
+
+function pdfFooter(doc){
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const pages = doc.internal.getNumberOfPages();
+  for(let i=1;i<=pages;i++){
+    doc.setPage(i);
+    doc.setDrawColor(200,200,200); doc.line(14,H-14,W-14,H-14);
+    doc.setFontSize(8); doc.setTextColor(150,150,150);
+    doc.text('Kas RT 07 – Sistem Keuangan Transparan',14,H-8);
+    doc.text(`Halaman ${i} dari ${pages}`,W-14,H-8,{align:'right'});
+  }
+}
+
+function pdfSaldoBox(doc, y, masuk, keluar){
+  const W = doc.internal.pageSize.getWidth();
+  const saldo = masuk - keluar;
+  const bw = (W-28)/3, bh = 18;
+  const boxes = [
+    {label:'Total Pemasukan', val:fmt(masuk), color:[29,158,117]},
+    {label:'Total Pengeluaran', val:fmt(keluar), color:[216,90,48]},
+    {label:'Saldo Akhir', val:fmt(saldo), color:[55,138,221]},
+  ];
+  boxes.forEach((b,i)=>{
+    const x = 14 + i*(bw+4);
+    doc.setFillColor(...b.color);
+    doc.roundedRect(x,y,bw,bh,2,2,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(7); doc.setFont(undefined,'normal');
+    doc.text(b.label, x+bw/2, y+6, {align:'center'});
+    doc.setFontSize(10); doc.setFont(undefined,'bold');
+    doc.text(b.val, x+bw/2, y+14, {align:'center'});
+  });
+  doc.setTextColor(40,40,40); doc.setFont(undefined,'normal');
+  return y + bh + 8;
+}
+
+/* ══════════════════════════════════════════
+   EXPORT PDF — BULANAN
+══════════════════════════════════════════ */
+function exportPdfBulanan(){
+  const bln = parseInt(document.getElementById('pdf-bulan').value);
+  const thn = parseInt(document.getElementById('pdf-tahun').value);
+  const blnNama = BULAN_NAMA[bln];
+  const prefix = `${thn}-${String(bln+1).padStart(2,'0')}`;
+  const txBln = txData.filter(t=>t.tgl.startsWith(prefix)).sort((a,b)=>a.tgl.localeCompare(b.tgl));
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y = pdfHeader(doc, 'LAPORAN KEUANGAN BULANAN', `${blnNama} ${thn}`);
+
+  y = pdfSaldoBox(doc, y, totalMasuk(txBln), totalKeluar(txBln));
+
+  doc.setFontSize(11); doc.setFont(undefined,'bold');
+  doc.text('Rincian Transaksi', 14, y); y += 6;
+
+  if(txBln.length === 0){
+    doc.setFontSize(9); doc.setFont(undefined,'normal');
+    doc.setTextColor(150,150,150);
+    doc.text('Tidak ada transaksi pada periode ini.', 14, y+6);
+    doc.setTextColor(40,40,40);
+    y += 14;
+  } else {
+    doc.autoTable({
+      startY: y,
+      head: [['Tgl','Keterangan','Kategori','Pemasukan','Pengeluaran']],
+      body: txBln.map(t => [
+        fmtDate(t.tgl), t.desc, t.cat,
+        t.tipe==='in' ? 'Rp '+fmtNum(t.jumlah) : '-',
+        t.tipe==='out' ? 'Rp '+fmtNum(t.jumlah) : '-',
+      ]),
+      foot: [['','','TOTAL',
+        'Rp '+fmtNum(totalMasuk(txBln)),
+        'Rp '+fmtNum(totalKeluar(txBln))
+      ]],
+      styles: { fontSize:8, cellPadding:3 },
+      headStyles: { fillColor:[29,158,117], textColor:255, fontStyle:'bold' },
+      footStyles: { fillColor:[240,240,235], fontStyle:'bold', fontSize:8 },
+      columnStyles: { 0:{cellWidth:24}, 3:{halign:'right'}, 4:{halign:'right'} },
+      alternateRowStyles: { fillColor:[248,248,245] },
+      margin:{left:14,right:14},
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+
+  // Catatan
+  doc.setFontSize(8); doc.setTextColor(120,120,120);
+  doc.text('Dokumen ini dicetak otomatis dari sistem Kas RT 07. Sah tanpa tanda tangan.', 14, y);
+
+  pdfFooter(doc);
+  doc.save(`Laporan-Kas-RT07-${blnNama}-${thn}.pdf`);
+}
+
+/* ══════════════════════════════════════════
+   EXPORT PDF — IURAN
+══════════════════════════════════════════ */
+function exportPdfIuran(){
+  const bln = parseInt(document.getElementById('pdf-iuran-bulan').value);
+  const thn = document.getElementById('pdf-iuran-tahun').value;
+  const blnNama = BULAN_NAMA[bln];
+  const key = `${blnNama} ${thn}`;
+  const data = iuranData[key] || {};
+
+  const lunas = WARGA.filter(w=>data[w.id]);
+  const belum = WARGA.filter(w=>!data[w.id]);
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y = pdfHeader(doc, 'LAPORAN IURAN WARGA', `${blnNama} ${thn}`);
+
+  // Summary box
+  const W = doc.internal.pageSize.getWidth();
+  doc.setFillColor(248,248,245); doc.roundedRect(14,y,W-28,18,2,2,'F');
+  doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(100,100,100);
+  doc.text('Total KK', 24, y+7); doc.text('Sudah Bayar', 80, y+7); doc.text('Belum Bayar', 140, y+7);
+  doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(40,40,40);
+  doc.text(String(WARGA.length), 24, y+15);
+  doc.setTextColor(29,158,117); doc.text(`${lunas.length} KK`, 80, y+15);
+  doc.setTextColor(216,90,48); doc.text(`${belum.length} KK`, 140, y+15);
+  doc.setTextColor(40,40,40); doc.setFont(undefined,'normal');
+  y += 26;
+
+  doc.setFontSize(11); doc.setFont(undefined,'bold');
+  doc.text('Daftar Status Iuran Warga', 14, y); y += 5;
+
+  doc.autoTable({
+    startY: y,
+    head: [['No','Nama Warga','Blok','Status','Jumlah']],
+    body: WARGA.map((w,i) => [
+      i+1, w.nama, w.blok,
+      data[w.id] ? 'LUNAS' : 'BELUM BAYAR',
+      data[w.id] ? 'Rp 20.000' : '-'
+    ]),
+    foot: [['','','','TOTAL TERKUMPUL', 'Rp '+fmtNum(lunas.length*20000)]],
+    styles: { fontSize:9, cellPadding:3 },
+    headStyles: { fillColor:[29,158,117], textColor:255, fontStyle:'bold' },
+    footStyles: { fillColor:[240,240,235], fontStyle:'bold' },
+    bodyStyles: { textColor:[40,40,40] },
+    didDrawCell: (data) => {
+      if(data.section==='body' && data.column.index===3){
+        const val = data.cell.raw;
+        if(val==='LUNAS'){ data.cell.styles.textColor=[8,80,65]; data.cell.styles.fontStyle='bold'; }
+        else { data.cell.styles.textColor=[153,60,29]; data.cell.styles.fontStyle='bold'; }
+      }
+    },
+    alternateRowStyles: { fillColor:[248,248,245] },
+    columnStyles: { 0:{cellWidth:10,halign:'center'}, 4:{halign:'right'} },
+    margin:{left:14,right:14},
+  });
+
+  pdfFooter(doc);
+  doc.save(`Iuran-RT07-${blnNama}-${thn}.pdf`);
+}
+
+/* ══════════════════════════════════════════
+   EXPORT PDF — LENGKAP
+══════════════════════════════════════════ */
+function exportPdfLengkap(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const W = doc.internal.pageSize.getWidth();
+  let y = pdfHeader(doc, 'LAPORAN KEUANGAN LENGKAP', 'Semua Periode');
+
+  y = pdfSaldoBox(doc, y, totalMasuk(txData), totalKeluar(txData));
+
+  // Semua transaksi
+  doc.setFontSize(11); doc.setFont(undefined,'bold');
+  doc.text('Riwayat Semua Transaksi', 14, y); y += 5;
+  const sorted = [...txData].sort((a,b)=>b.tgl.localeCompare(a.tgl));
+  doc.autoTable({
+    startY: y,
+    head: [['Tgl','Keterangan','Kategori','Pemasukan','Pengeluaran']],
+    body: sorted.map(t => [
+      fmtDate(t.tgl), t.desc, t.cat,
+      t.tipe==='in' ? 'Rp '+fmtNum(t.jumlah) : '-',
+      t.tipe==='out' ? 'Rp '+fmtNum(t.jumlah) : '-',
+    ]),
+    styles: { fontSize:8, cellPadding:2.5 },
+    headStyles: { fillColor:[29,158,117], textColor:255, fontStyle:'bold' },
+    alternateRowStyles: { fillColor:[248,248,245] },
+    columnStyles: { 0:{cellWidth:24}, 3:{halign:'right'}, 4:{halign:'right'} },
+    margin:{left:14,right:14},
+  });
+
+  // Rekap iuran per bulan
+  doc.addPage();
+  y = pdfHeader(doc, 'REKAP IURAN SEMUA BULAN', '');
+  y = 42;
+
+  BULAN_6.forEach(bln => {
+    const data = iuranData[bln] || {};
+    const lunas = WARGA.filter(w=>data[w.id]).length;
+    const belum = WARGA.length - lunas;
+    if(y > 240){ doc.addPage(); y=20; }
+    doc.setFontSize(10); doc.setFont(undefined,'bold');
+    doc.text(bln, 14, y); y += 5;
+    doc.autoTable({
+      startY: y,
+      head: [['No','Nama','Blok','Status']],
+      body: WARGA.map((w,i)=>[i+1, w.nama, w.blok, data[w.id]?'Lunas':'Belum']),
+      styles: { fontSize:8, cellPadding:2 },
+      headStyles: { fillColor:[55,138,221], textColor:255, fontStyle:'bold' },
+      alternateRowStyles: { fillColor:[248,248,245] },
+      columnStyles: { 0:{cellWidth:10,halign:'center'} },
+      margin:{left:14,right:14},
+      didDrawCell: d => {
+        if(d.section==='body'&&d.column.index===3){
+          d.cell.styles.textColor = d.cell.raw==='Lunas' ? [8,80,65] : [153,60,29];
+          d.cell.styles.fontStyle = 'bold';
+        }
+      }
+    });
+    y = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(8); doc.setTextColor(100,100,100);
+    doc.text(`  Terkumpul: Rp ${fmtNum(lunas*20000)}  |  Belum masuk: Rp ${fmtNum(belum*20000)}`, 14, y-4);
+    doc.setTextColor(40,40,40);
+    y += 4;
+  });
+
+  pdfFooter(doc);
+  doc.save(`Laporan-Lengkap-RT07-${new Date().getFullYear()}.pdf`);
+}
+
+/* ══════════════════════════════════════════
+   CLOCK
+══════════════════════════════════════════ */
+function updateClock(){
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}) + ' · ' +
+    new Date().toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
+}
+
+/* ══════════════════════════════════════════
+   INIT
+══════════════════════════════════════════ */
+initData();
+renderDashboard();
+updateClock();
+setInterval(updateClock, 30000);
+// Set bulan default PDF
+document.getElementById('pdf-bulan').value = new Date().getMonth();
+document.getElementById('pdf-iuran-bulan').value = new Date().getMonth();
+</script>
+</body>
+</html>
