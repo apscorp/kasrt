@@ -1121,27 +1121,23 @@ async function submitTrx() {
   closeTrx(); // tutup modal langsung — terasa instan!
   showToast('✅ Transaksi disimpan!', 'success');
 
-  const payload = {
+  const params = new URLSearchParams({
     action: 'addRow',
-    tanggal, jenis: currentType, nama, nominal, keterangan: ket, kategori: kat, saldo: saldoBaru
-  };
+    tanggal, jenis: currentType, nama,
+    nominal, keterangan: ket, kategori: kat
+  });
 
   setSyncStatus('loading', 'Sinkronisasi...');
   try {
-    const res = await fetch(CONFIG.scriptUrl, {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
+    const res  = await fetch(CONFIG.scriptUrl + '?' + params.toString());
     const json = await res.json();
     if (json.status === 'ok') {
-      // Ganti data temp dengan data resmi dari server (silent refresh)
       loadData();
       setSyncStatus('ok', 'Tersimpan ' + new Date().toLocaleTimeString('id-ID'));
     } else {
       throw new Error(json.message);
     }
   } catch(e) {
-    // Rollback: hapus data optimistic jika gagal
     ALL_TRX = ALL_TRX.filter(r => r.id !== trxBaru.id);
     renderTable(ALL_TRX);
     renderStats(ALL_TRX);
@@ -1154,10 +1150,8 @@ async function hapusTrx(idx, id) {
   if (!confirm('Hapus transaksi ini?')) return;
   setSyncStatus('loading', 'Menghapus...');
   try {
-    const res = await fetch(CONFIG.scriptUrl, {
-      method: 'POST',
-      body: JSON.stringify({action:'deleteRow', id})
-    });
+    const params = new URLSearchParams({ action: 'deleteRow', id });
+    const res  = await fetch(CONFIG.scriptUrl + '?' + params.toString());
     const json = await res.json();
     if (json.status === 'ok') {
       showToast('🗑️ Transaksi dihapus', 'success');
