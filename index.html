@@ -399,36 +399,59 @@
 
 <!-- MODAL SETUP -->
 <div class="modal-overlay" id="modal-setup">
-  <div class="modal-box" style="width:480px; max-height:90vh; overflow-y:auto;">
-    <h2>⚙️ Konfigurasi Google Sheets</h2>
-    <p>Hubungkan aplikasi ini ke Google Sheets sebagai database.</p>
-    <div class="field">
-      <label>Apps Script Web App URL</label>
-      <input type="url" id="cfg-url" placeholder="https://script.google.com/macros/s/...">
+  <div class="modal-box" style="width:500px; max-height:92vh; overflow-y:auto;">
+    <h2>⚙️ Konfigurasi Aplikasi</h2>
+    <p>Isi semua field di bawah, lalu klik Simpan ke GitHub.</p>
+
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="tab-setup active" id="tab-gs" onclick="switchSetupTab('gs',this)" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;background:var(--hijau);color:white">🗄️ Google Sheets</button>
+      <button class="tab-setup" id="tab-gh" onclick="switchSetupTab('gh',this)" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;background:var(--abu-muda);color:var(--teks-abu)">🐙 GitHub</button>
     </div>
-    <div class="field">
-      <label>Password Admin</label>
-      <input type="password" id="cfg-pass" placeholder="Buat password untuk bendahara">
+
+    <!-- TAB GOOGLE SHEETS -->
+    <div id="setup-gs">
+      <div class="field">
+        <label>Apps Script Web App URL</label>
+        <input type="url" id="cfg-url" placeholder="https://script.google.com/macros/s/...">
+      </div>
+      <div class="field">
+        <label>Password Admin (Bendahara)</label>
+        <input type="password" id="cfg-pass" placeholder="Buat password rahasia">
+      </div>
     </div>
-    <div class="setup-note">
-      <strong>📋 Cara Setup (dilakukan SEKALI oleh Bendahara):</strong>
-      <ol class="setup-steps">
-        <li>Buka <a href="https://sheets.google.com" target="_blank">Google Sheets</a>, buat spreadsheet baru</li>
-        <li>Buka menu <strong>Extensions → Apps Script</strong>, paste kode dari <strong>apps-script.js</strong></li>
-        <li>Ganti <code>SPREADSHEET_ID</code> dengan ID spreadsheet Anda</li>
-        <li>Klik <strong>Deploy → New Deployment → Web App</strong> (Anyone can access)</li>
-        <li>Copy URL yang muncul → paste di field atas</li>
-        <li>Klik <strong>"Simpan &amp; Unduh File Baru"</strong> → file <strong>keuangan-rt2.html</strong> akan terunduh otomatis</li>
-        <li>Bagikan file <strong>keuangan-rt2.html</strong> itu ke semua warga — langsung bisa dipakai tanpa konfigurasi!</li>
-      </ol>
+
+    <!-- TAB GITHUB -->
+    <div id="setup-gh" style="display:none">
+      <div style="background:var(--kuning-muda);border-radius:8px;padding:12px 14px;font-size:12px;color:#633806;margin-bottom:14px;line-height:1.7">
+        <strong>🔑 Cara dapat GitHub Token:</strong><br>
+        GitHub.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token →
+        centang <strong>repo</strong> → Generate → Copy token
+      </div>
+      <div class="field">
+        <label>GitHub Username</label>
+        <input type="text" id="cfg-gh-user" placeholder="contoh: apscorp">
+      </div>
+      <div class="field">
+        <label>Nama Repository</label>
+        <input type="text" id="cfg-gh-repo" placeholder="contoh: kasrt">
+      </div>
+      <div class="field">
+        <label>Nama File HTML di Repo</label>
+        <input type="text" id="cfg-gh-file" placeholder="contoh: index.html">
+      </div>
+      <div class="field">
+        <label>GitHub Personal Access Token</label>
+        <input type="password" id="cfg-gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+        <div style="font-size:11px;color:var(--teks-abu);margin-top:4px">Token hanya tersimpan di browser Anda, tidak dikirim ke mana-mana selain GitHub.</div>
+      </div>
     </div>
-    <div style="background:#E1F5EE;border-radius:8px;padding:10px 14px;font-size:12px;color:#085041;margin-top:10px">
-      💡 <strong>Kenapa unduh file baru?</strong> Konfigurasi tertanam langsung di dalam file HTML, sehingga semua warga yang membuka file tersebut otomatis terhubung ke data yang sama — tanpa perlu setting apapun.
-    </div>
-    <div id="config-saved-notice"></div>
+
+    <div id="config-saved-notice" style="margin-top:12px"></div>
+    <div id="cfg-progress" style="display:none;margin-top:12px;font-size:13px;color:var(--hijau);font-weight:600"></div>
+
     <div class="form-actions" style="margin-top:16px">
       <button class="btn btn-secondary" onclick="closeSetup()">Batal</button>
-      <button class="btn btn-primary" onclick="saveConfig()">💾 Simpan &amp; Unduh File Baru</button>
+      <button class="btn btn-primary" id="btn-save-config" onclick="saveConfig()">💾 Simpan ke GitHub</button>
     </div>
   </div>
 </div>
@@ -599,15 +622,14 @@
 
 <script>
 // ===== CONFIG =====
-// === KONFIGURASI TERTANAM ===
-// Diisi otomatis saat admin klik "Simpan Konfigurasi"
-// Tidak perlu diubah manual
+// === KONFIGURASI ===
+// Nilai ini diisi otomatis via GitHub API saat admin klik Simpan
 const EMBEDDED_URL  = '%%SCRIPT_URL%%';
 const EMBEDDED_PASS = '%%ADMIN_PASS%%';
 
 let CONFIG = {
-  scriptUrl: EMBEDDED_URL || localStorage.getItem('rt_script_url') || '',
-  adminPass: EMBEDDED_PASS || localStorage.getItem('rt_admin_pass') || 'bendahara123'
+  scriptUrl: EMBEDDED_URL !== '%%SCRIPT_URL%%' ? EMBEDDED_URL : (localStorage.getItem('rt_script_url') || ''),
+  adminPass: EMBEDDED_PASS !== '%%ADMIN_PASS%%' ? EMBEDDED_PASS : (localStorage.getItem('rt_admin_pass') || 'bendahara123')
 };
 let IS_ADMIN = false;
 let ALL_TRX = [];
@@ -671,40 +693,167 @@ function toggleAdminMenu() {
 function openSetup() {
   document.getElementById('cfg-url').value = CONFIG.scriptUrl;
   document.getElementById('cfg-pass').value = CONFIG.adminPass;
+  // Pre-fill GitHub fields dari localStorage
+  document.getElementById('cfg-gh-user').value  = localStorage.getItem('rt_gh_user')  || '';
+  document.getElementById('cfg-gh-repo').value  = localStorage.getItem('rt_gh_repo')  || '';
+  document.getElementById('cfg-gh-file').value  = localStorage.getItem('rt_gh_file')  || 'index.html';
+  document.getElementById('cfg-gh-token').value = localStorage.getItem('rt_gh_token') || '';
+  // Default langsung ke tab GitHub
+  document.getElementById('cfg-progress').style.display = 'none';
+  document.getElementById('config-saved-notice').style.display = 'none';
+  document.getElementById('btn-save-config').dataset.tab = 'gh';
   document.getElementById('modal-setup').classList.add('show');
 }
-function closeSetup() { document.getElementById('modal-setup').classList.remove('show'); }
+function closeSetup() {
+  document.getElementById('modal-setup').classList.remove('show');
+  // Simpan GitHub fields ke localStorage untuk pre-fill berikutnya
+  const u = document.getElementById('cfg-gh-user').value.trim();
+  const r = document.getElementById('cfg-gh-repo').value.trim();
+  const f = document.getElementById('cfg-gh-file').value.trim();
+  const t = document.getElementById('cfg-gh-token').value.trim();
+  if (u) localStorage.setItem('rt_gh_user', u);
+  if (r) localStorage.setItem('rt_gh_repo', r);
+  if (f) localStorage.setItem('rt_gh_file', f);
+  if (t) localStorage.setItem('rt_gh_token', t);
+}
 
-function saveConfig() {
-  const url = document.getElementById('cfg-url').value.trim();
-  const pass = document.getElementById('cfg-pass').value.trim();
-  if (!url) { showToast('⚠️ Masukkan URL Apps Script!', 'error'); return; }
+// ===== SETUP TABS =====
+function switchSetupTab(tab, btn) {
+  document.getElementById('setup-gs').style.display = tab === 'gs' ? 'block' : 'none';
+  document.getElementById('setup-gh').style.display = tab === 'gh' ? 'block' : 'none';
+  document.querySelectorAll('.tab-setup').forEach(b => {
+    b.style.background = 'var(--abu-muda)';
+    b.style.color = 'var(--teks-abu)';
+  });
+  btn.style.background = 'var(--hijau)';
+  btn.style.color = 'white';
+  const btnSave = document.getElementById('btn-save-config');
+  btnSave.textContent = tab === 'gh' ? '🚀 Simpan ke GitHub' : '💾 Simpan Lokal';
+  btnSave.dataset.tab = tab;
+}
+
+function setProgress(msg, type='info') {
+  const el = document.getElementById('cfg-progress');
+  el.style.display = 'block';
+  el.style.color = type === 'error' ? 'var(--merah)' : type === 'ok' ? 'var(--hijau)' : 'var(--biru)';
+  el.textContent = msg;
+}
+
+async function saveConfig() {
+  const url   = document.getElementById('cfg-url').value.trim();
+  const pass  = document.getElementById('cfg-pass').value.trim();
+  if (!url)  { showToast('⚠️ Masukkan URL Apps Script!', 'error'); return; }
   if (!pass) { showToast('⚠️ Masukkan password admin!', 'error'); return; }
 
-  // Simpan ke localStorage (untuk browser ini)
+  const tab = document.getElementById('btn-save-config').dataset.tab || 'gh';
+
+  // Selalu simpan ke localStorage dulu (fallback)
   localStorage.setItem('rt_script_url', url);
   localStorage.setItem('rt_admin_pass', pass);
   CONFIG.scriptUrl = url;
   CONFIG.adminPass = pass;
 
-  // Buat versi file HTML baru dengan config tertanam
-  // sehingga bisa dibagikan ke semua warga tanpa perlu konfigurasi ulang
-  const htmlEl = document.documentElement.outerHTML;
-  const patched = htmlEl
-    .replace("'%%SCRIPT_URL%%'", "'" + url.replace(/'/g, "\'") + "'")
-    .replace("'%%ADMIN_PASS%%'", "'" + pass.replace(/'/g, "\'") + "'");
+  if (tab === 'gh') {
+    // ── SIMPAN VIA GITHUB API ──
+    const ghUser  = document.getElementById('cfg-gh-user').value.trim();
+    const ghRepo  = document.getElementById('cfg-gh-repo').value.trim();
+    const ghFile  = document.getElementById('cfg-gh-file').value.trim() || 'index.html';
+    const ghToken = document.getElementById('cfg-gh-token').value.trim();
 
-  const blob = new Blob([patched], {type: 'text/html'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'keuangan-rt2.html';
-  a.click();
-  URL.revokeObjectURL(a.href);
+    if (!ghUser || !ghRepo || !ghToken) {
+      showToast('⚠️ Isi Username, Repo, dan Token GitHub!', 'error'); return;
+    }
 
-  const notice = document.getElementById('config-saved-notice');
-  notice.style.display = 'block';
-  notice.innerHTML = '✅ File <strong>keuangan-rt2.html</strong> sudah diunduh! Bagikan file ini ke semua warga — tidak perlu konfigurasi lagi.';
-  setTimeout(() => { closeSetup(); location.reload(); }, 3000);
+    // Simpan GitHub fields ke localStorage
+    localStorage.setItem('rt_gh_user', ghUser);
+    localStorage.setItem('rt_gh_repo', ghRepo);
+    localStorage.setItem('rt_gh_file', ghFile);
+    localStorage.setItem('rt_gh_token', ghToken);
+
+    const btn = document.getElementById('btn-save-config');
+    btn.disabled = true; btn.textContent = '⏳ Mengupdate GitHub...'; btn.style.opacity = '0.6';
+    document.getElementById('cfg-progress').style.display = 'block';
+
+    try {
+      // 1. Ambil SHA file saat ini dari GitHub
+      setProgress('📡 Mengambil file dari GitHub...');
+      const apiBase = `https://api.github.com/repos/${ghUser}/${ghRepo}/contents/${ghFile}`;
+      const headers = {
+        'Authorization': `token ${ghToken}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      };
+
+      const getRes = await fetch(apiBase, { headers });
+      if (!getRes.ok) throw new Error(`GitHub: ${getRes.status} — cek username/repo/token`);
+      const fileData = await getRes.json();
+      const sha = fileData.sha;
+
+      // 2. Decode konten lama, patch konfigurasi
+      setProgress('🔧 Menyisipkan konfigurasi ke file...');
+      const oldContent = atob(fileData.content.replace(/
+/g,''));
+      const newContent = oldContent
+        .replace(/'%%SCRIPT_URL%%'/g, "'" + url.replace(/'/g, "\'") + "'")
+        .replace(/'%%ADMIN_PASS%%'/g, "'" + pass.replace(/'/g, "\'") + "'");
+
+      if (oldContent === newContent) {
+        // Token placeholder sudah terganti sebelumnya, patch nilai lama
+        const patchedContent = newContent
+          .replace(/const EMBEDDED_URL\s*=\s*'[^']*'/,  "const EMBEDDED_URL  = '" + url.replace(/'/g,"\'") + "'")
+          .replace(/const EMBEDDED_PASS\s*=\s*'[^']*'/, "const EMBEDDED_PASS = '" + pass.replace(/'/g,"\'") + "'");
+        var finalContent = patchedContent;
+      } else {
+        var finalContent = newContent;
+      }
+
+      // 3. Push ke GitHub
+      setProgress('🚀 Mengupload ke GitHub...');
+      const pushRes = await fetch(apiBase, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          message: '⚙️ Update konfigurasi RT App',
+          content: btoa(unescape(encodeURIComponent(finalContent))),
+          sha
+        })
+      });
+
+      if (!pushRes.ok) {
+        const err = await pushRes.json();
+        throw new Error(err.message || pushRes.status);
+      }
+
+      setProgress('✅ Berhasil! GitHub Pages akan update dalam ~1 menit.', 'ok');
+      const notice = document.getElementById('config-saved-notice');
+      notice.style.display = 'block';
+      notice.style.background = 'var(--hijau-muda)';
+      notice.style.color = 'var(--hijau-gelap)';
+      notice.style.padding = '10px 14px';
+      notice.style.borderRadius = '8px';
+      notice.style.fontSize = '13px';
+      notice.innerHTML = `✅ <strong>GitHub berhasil diupdate!</strong><br>
+        Tunggu ±1 menit, lalu refresh halaman. Semua warga yang buka link GitHub Pages Anda akan langsung terhubung ke data.`;
+      showToast('🎉 GitHub diupdate!', 'success');
+      setTimeout(() => closeSetup(), 4000);
+
+    } catch(e) {
+      setProgress('❌ Gagal: ' + e.message, 'error');
+      showToast('❌ ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🚀 Simpan ke GitHub';
+      btn.style.opacity = '1';
+    }
+
+  } else {
+    // ── SIMPAN LOKAL (localStorage saja) ──
+    const notice = document.getElementById('config-saved-notice');
+    notice.style.display = 'block';
+    notice.innerHTML = '✅ Tersimpan di browser ini. Untuk semua device, gunakan tab GitHub.';
+    showToast('✅ Konfigurasi disimpan!', 'success');
+    setTimeout(() => { closeSetup(); location.reload(); }, 1500);
+  }
 }
 
 // ===== DATA LOADING =====
