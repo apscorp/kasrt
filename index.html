@@ -605,7 +605,7 @@ function renderWarga(){
       +'<div class="wa" style="background:'+wClr(w.nama)+'">'+ini+'</div>'
       +'<div><div class="wn">'+x(w.nama)+'</div>'
       +'<div class="'+(lunas?'wL':'wB')+'">'+(lunas?'&#10003; Lunas':'&#10007; Belum bayar')+'</div></div>'
-      +(ADMIN?'<button onclick="hapusWarga(''+w.nama.replace(/'/g,"\'")+'',this)" title="Hapus" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--TA);font-size:14px;padding:2px 4px">&#x2715;</button>':'')
+      +(ADMIN?'<button onclick="hapusWarga(this,&quot;'+w.nama.replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'&quot;)" title="Hapus" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--TA);font-size:16px;padding:2px 6px">&times;</button>':'')
       +'</div>';
   }).join('');
   if(ADMIN) html+='<div class="wc wa2" onclick="addWarga()">+ Tambah Warga</div>';
@@ -632,7 +632,7 @@ async function addWarga(){
   }catch(e){toast('Gagal: '+e.message,'err');}
 }
 
-async function hapusWarga(nama,btn){
+async function hapusWarga(btn,nama){
   if(!confirm('Hapus "'+nama+'" dari daftar warga?')) return;
   if(!CFG.url){toast('Konfigurasi belum diisi!','err');return;}
   btn.disabled=true;
