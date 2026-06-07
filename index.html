@@ -411,22 +411,24 @@
       <input type="password" id="cfg-pass" placeholder="Buat password untuk bendahara">
     </div>
     <div class="setup-note">
-      <strong>📋 Cara Setup (sekali saja):</strong>
+      <strong>📋 Cara Setup (dilakukan SEKALI oleh Bendahara):</strong>
       <ol class="setup-steps">
         <li>Buka <a href="https://sheets.google.com" target="_blank">Google Sheets</a>, buat spreadsheet baru</li>
-        <li>Beri nama sheet pertama: <strong>Transaksi</strong></li>
-        <li>Baris pertama isi header: Tanggal | Jenis | Nama | Nominal | Keterangan | Kategori | Saldo</li>
-        <li>Buka menu <strong>Extensions → Apps Script</strong></li>
-        <li>Hapus kode yang ada, paste kode dari file <strong>apps-script.js</strong> yang sudah diunduh</li>
-        <li>Klik <strong>Deploy → New Deployment → Web App</strong></li>
-        <li>Execute as: <em>Me</em>, Access: <em>Anyone</em> → Deploy</li>
-        <li>Copy URL yang muncul, paste di atas</li>
+        <li>Buka menu <strong>Extensions → Apps Script</strong>, paste kode dari <strong>apps-script.js</strong></li>
+        <li>Ganti <code>SPREADSHEET_ID</code> dengan ID spreadsheet Anda</li>
+        <li>Klik <strong>Deploy → New Deployment → Web App</strong> (Anyone can access)</li>
+        <li>Copy URL yang muncul → paste di field atas</li>
+        <li>Klik <strong>"Simpan &amp; Unduh File Baru"</strong> → file <strong>keuangan-rt2.html</strong> akan terunduh otomatis</li>
+        <li>Bagikan file <strong>keuangan-rt2.html</strong> itu ke semua warga — langsung bisa dipakai tanpa konfigurasi!</li>
       </ol>
     </div>
-    <div id="config-saved-notice">✅ Konfigurasi tersimpan! Halaman akan dimuat ulang...</div>
+    <div style="background:#E1F5EE;border-radius:8px;padding:10px 14px;font-size:12px;color:#085041;margin-top:10px">
+      💡 <strong>Kenapa unduh file baru?</strong> Konfigurasi tertanam langsung di dalam file HTML, sehingga semua warga yang membuka file tersebut otomatis terhubung ke data yang sama — tanpa perlu setting apapun.
+    </div>
+    <div id="config-saved-notice"></div>
     <div class="form-actions" style="margin-top:16px">
       <button class="btn btn-secondary" onclick="closeSetup()">Batal</button>
-      <button class="btn btn-primary" onclick="saveConfig()">💾 Simpan Konfigurasi</button>
+      <button class="btn btn-primary" onclick="saveConfig()">💾 Simpan &amp; Unduh File Baru</button>
     </div>
   </div>
 </div>
@@ -597,9 +599,15 @@
 
 <script>
 // ===== CONFIG =====
+// === KONFIGURASI TERTANAM ===
+// Diisi otomatis saat admin klik "Simpan Konfigurasi"
+// Tidak perlu diubah manual
+const EMBEDDED_URL  = '%%SCRIPT_URL%%';
+const EMBEDDED_PASS = '%%ADMIN_PASS%%';
+
 let CONFIG = {
-  scriptUrl: localStorage.getItem('rt_script_url') || '',
-  adminPass: localStorage.getItem('rt_admin_pass') || 'bendahara123'
+  scriptUrl: EMBEDDED_URL || localStorage.getItem('rt_script_url') || '',
+  adminPass: EMBEDDED_PASS || localStorage.getItem('rt_admin_pass') || 'bendahara123'
 };
 let IS_ADMIN = false;
 let ALL_TRX = [];
@@ -673,14 +681,30 @@ function saveConfig() {
   if (!url) { showToast('⚠️ Masukkan URL Apps Script!', 'error'); return; }
   if (!pass) { showToast('⚠️ Masukkan password admin!', 'error'); return; }
 
+  // Simpan ke localStorage (untuk browser ini)
   localStorage.setItem('rt_script_url', url);
   localStorage.setItem('rt_admin_pass', pass);
   CONFIG.scriptUrl = url;
   CONFIG.adminPass = pass;
 
+  // Buat versi file HTML baru dengan config tertanam
+  // sehingga bisa dibagikan ke semua warga tanpa perlu konfigurasi ulang
+  const htmlEl = document.documentElement.outerHTML;
+  const patched = htmlEl
+    .replace("'%%SCRIPT_URL%%'", "'" + url.replace(/'/g, "\'") + "'")
+    .replace("'%%ADMIN_PASS%%'", "'" + pass.replace(/'/g, "\'") + "'");
+
+  const blob = new Blob([patched], {type: 'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'keuangan-rt2.html';
+  a.click();
+  URL.revokeObjectURL(a.href);
+
   const notice = document.getElementById('config-saved-notice');
   notice.style.display = 'block';
-  setTimeout(() => { closeSetup(); location.reload(); }, 1500);
+  notice.innerHTML = '✅ File <strong>keuangan-rt2.html</strong> sudah diunduh! Bagikan file ini ke semua warga — tidak perlu konfigurasi lagi.';
+  setTimeout(() => { closeSetup(); location.reload(); }, 3000);
 }
 
 // ===== DATA LOADING =====
