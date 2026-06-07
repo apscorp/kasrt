@@ -362,8 +362,8 @@ footer a{color:var(--GR)}
 //  KONFIGURASI — ISI DI SINI, LALU PUSH KE GITHUB
 //  Warga tidak perlu setting apapun, langsung lihat data
 // ================================================================
-var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwqK7DveMlL3nlitoOXTMQpz1vJ41Z8FmNIXhWo5NtL2We3Wqcje8VoFnGN9NszGvG1/exec';  // <-- PASTE URL Apps Script Anda di sini
-var ADMIN_PASS = '123890';  // <-- PASTE password bendahara di sini
+var SCRIPT_URL = '';  // <-- PASTE URL Apps Script Anda di sini
+var ADMIN_PASS = '';  // <-- PASTE password bendahara di sini
 
 // ================================================================
 //  SISTEM FALLBACK (jangan diubah)
@@ -383,7 +383,7 @@ var CFG={
 };
 
 // ================================================================
-var ADMIN=false, TRX=[], TIPE='M', SG_IDX=-1;
+var ADMIN=false, TRX=[], WARGA=[], TIPE='M', SG_IDX=-1;
 var CB=null, CL=null, PER='minggu';
 
 // ================================================================
@@ -409,7 +409,6 @@ window.addEventListener('DOMContentLoaded',function(){
   // Load data — selalu, tidak peduli apakah URL ada atau tidak
   // Jika URL kosong, tampilkan panduan setup
   loadData();
-  renderWarga();
 });
 
 // ================================================================
@@ -495,11 +494,12 @@ async function loadData(){
     clearTimeout(t);
     var json=JSON.parse(await res.text());
     if(json.status==='ok'){
-      TRX=json.data||[];
+      TRX=json.transaksi||json.data||[];
+      WARGA=json.warga||[];
       renderTrx(TRX); renderStats(TRX); renderKat(TRX);
+      renderWarga();
       sync('','Update '+new Date().toLocaleTimeString('id-ID'));
       document.getElementById('lupd').textContent='Update: '+new Date().toLocaleTimeString('id-ID');
-      // Sembunyikan notice jika data berhasil dimuat
       document.getElementById('notice').style.display='none';
     } else throw new Error(json.message||'Error server');
   }catch(e){
@@ -593,29 +593,58 @@ function renderKat(data){
 //  WARGA
 // ================================================================
 function renderWarga(){
-  var list=JSON.parse(localStorage.getItem('rt_warga')||'[]');
   var now=new Date();
-  var html=list.map(function(w){
+  var html=WARGA.map(function(w){
     var ini=w.nama.split(' ').slice(0,2).map(function(c){return c[0]||'';}).join('').toUpperCase();
     var lunas=TRX.some(function(r){
       return r.jenis==='masuk'&&r.kategori==='Iuran'
         &&r.nama.toLowerCase().includes(w.nama.toLowerCase())
         &&new Date(r.tanggal).getMonth()===now.getMonth();
     });
-    return '<div class="wc"><div class="wa" style="background:'+wClr(w.nama)+'">'+ini+'</div>'
+    return '<div class="wc">'
+      +'<div class="wa" style="background:'+wClr(w.nama)+'">'+ini+'</div>'
       +'<div><div class="wn">'+x(w.nama)+'</div>'
-      +'<div class="'+(lunas?'wL':'wB')+'">'+(lunas?'Lunas':'Belum bayar')+'</div></div></div>';
+      +'<div class="'+(lunas?'wL':'wB')+'">'+(lunas?'&#10003; Lunas':'&#10007; Belum bayar')+'</div></div>'
+      +(ADMIN?'<button onclick="hapusWarga(''+w.nama.replace(/'/g,"\'")+'',this)" title="Hapus" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--TA);font-size:14px;padding:2px 4px">&#x2715;</button>':'')
+      +'</div>';
   }).join('');
   if(ADMIN) html+='<div class="wc wa2" onclick="addWarga()">+ Tambah Warga</div>';
-  if(!list.length) html='<div style="grid-column:1/-1;text-align:center;padding:28px;color:var(--TA);font-size:13px">Belum ada data warga.'+(ADMIN?' Klik + Tambah Warga.':'')+'</div>'+(ADMIN?'<div class="wc wa2" onclick="addWarga()">+ Tambah Warga</div>':'');
+  if(!WARGA.length){
+    html='<div style="grid-column:1/-1;text-align:center;padding:28px;color:var(--TA);font-size:13px">'
+      +'Belum ada data warga.'+(ADMIN?' Klik tombol + untuk menambah.':'')+'</div>'
+      +(ADMIN?'<div class="wc wa2" onclick="addWarga()">+ Tambah Warga</div>':'');
+  }
   document.getElementById('wg').innerHTML=html;
 }
-function addWarga(){
-  var n=prompt('Nama lengkap warga:'); if(!n) return;
-  var list=JSON.parse(localStorage.getItem('rt_warga')||'[]');
-  list.push({nama:n.trim()});
-  localStorage.setItem('rt_warga',JSON.stringify(list));
-  renderWarga(); toast('Warga ditambahkan!','ok');
+
+async function addWarga(){
+  if(!CFG.url){toast('Konfigurasi belum diisi!','err');return;}
+  var n=prompt('Nama lengkap warga:'); if(!n||!n.trim()) return;
+  n=n.trim();
+  try{
+    var p=new URLSearchParams({action:'addWarga',nama:n});
+    var res=await fetch(CFG.url+'?'+p.toString());
+    var json=JSON.parse(await res.text());
+    if(json.status==='ok'){
+      WARGA.push({nama:n}); renderWarga();
+      toast('Warga ditambahkan!','ok');
+    } else toast(json.message||'Gagal menambah warga','err');
+  }catch(e){toast('Gagal: '+e.message,'err');}
+}
+
+async function hapusWarga(nama,btn){
+  if(!confirm('Hapus "'+nama+'" dari daftar warga?')) return;
+  if(!CFG.url){toast('Konfigurasi belum diisi!','err');return;}
+  btn.disabled=true;
+  try{
+    var p=new URLSearchParams({action:'deleteWarga',nama:nama});
+    var res=await fetch(CFG.url+'?'+p.toString());
+    var json=JSON.parse(await res.text());
+    if(json.status==='ok'){
+      WARGA=WARGA.filter(function(w){return w.nama!==nama;});
+      renderWarga(); toast('Warga dihapus','ok');
+    } else toast(json.message||'Gagal menghapus','err');
+  }catch(e){toast('Gagal: '+e.message,'err');}
 }
 
 // ================================================================
@@ -623,7 +652,7 @@ function addWarga(){
 // ================================================================
 function showSug(q){
   var box=document.getElementById('nsug');
-  var list=JSON.parse(localStorage.getItem('rt_warga')||'[]');
+  var list=WARGA.slice();
   var ql=q.toLowerCase().trim();
   var fil=list.filter(function(w){return !ql||w.nama.toLowerCase().includes(ql);});
   SG_IDX=-1;
