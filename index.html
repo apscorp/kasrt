@@ -272,11 +272,39 @@
   .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 6px; }
   .loading-row td { text-align: center; padding: 32px; color: var(--teks-abu); animation: pulse 1s infinite; }
 
+  .suggestion-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; cursor: pointer; transition: background 0.1s;
+    font-size: 14px; border-bottom: 1px solid rgba(0,0,0,0.04);
+  }
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item:hover, .suggestion-item.focused { background: var(--hijau-muda); }
+  .suggestion-avatar {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: white;
+  }
+  .suggestion-nama { font-weight: 600; }
+  .suggestion-extra {
+    padding: 8px 14px; font-size: 12px; color: var(--teks-abu);
+    cursor: pointer; border-top: 1px solid var(--border); font-style: italic;
+  }
+  .suggestion-extra:hover { background: var(--abu-muda); }
+
   #config-saved-notice {
     background: var(--hijau-muda); color: var(--hijau-gelap); border-radius: var(--radius-sm);
     padding: 10px 14px; font-size: 13px; font-weight: 600; margin-top: 12px;
     display: none;
   }
+
+  .periode-btn {
+    padding: 7px 14px; border-radius: 20px; border: 1px solid var(--border);
+    font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+    background: var(--abu-muda); color: var(--teks-abu); transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .periode-btn:hover { background: var(--hijau-muda); color: var(--hijau-gelap); border-color: var(--hijau); }
+  .periode-btn.active { background: var(--hijau); color: white; border-color: var(--hijau); }
 </style>
 </head>
 <body>
@@ -325,9 +353,15 @@
       <button class="type-btn masuk selected" id="btn-type-masuk" onclick="setType('masuk')">▲ Pemasukan</button>
       <button class="type-btn keluar" id="btn-type-keluar" onclick="setType('keluar')">▼ Pengeluaran</button>
     </div>
-    <div class="field">
+    <div class="field" style="position:relative">
       <label>Nama / Sumber</label>
-      <input type="text" id="f-nama" placeholder="cth: Pak Budi / Kas Bersama">
+      <input type="text" id="f-nama" placeholder="Ketik atau pilih nama warga..." autocomplete="off"
+        oninput="showSuggestions(this.value)" onfocus="showSuggestions(this.value)" onkeydown="navigateSuggestions(event)">
+      <div id="nama-suggestions" style="
+        display:none; position:absolute; top:100%; left:0; right:0; z-index:999;
+        background:white; border:1px solid var(--border); border-radius:var(--radius-sm);
+        box-shadow:0 8px 24px rgba(0,0,0,0.12); max-height:200px; overflow-y:auto; margin-top:2px;
+      "></div>
     </div>
     <div class="form-row">
       <div class="field">
@@ -493,8 +527,44 @@
 
   <!-- TAB: RINGKASAN -->
   <div id="tab-ringkasan" style="display:none">
+
+    <div style="background:white;border-radius:var(--radius);border:1px solid var(--border);padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-size:15px;font-weight:700">Grafik Keuangan</div>
+        <div style="font-size:12px;color:var(--teks-abu)" id="grafik-periode-label">Menampilkan data minggu ini</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="periode-btn active" onclick="setPeriode('minggu',this)">Mingguan</button>
+        <button class="periode-btn" onclick="setPeriode('bulan',this)">Bulanan</button>
+        <button class="periode-btn" onclick="setPeriode('3bulan',this)">3 Bulan</button>
+        <button class="periode-btn" onclick="setPeriode('6bulan',this)">6 Bulan</button>
+        <button class="periode-btn" onclick="setPeriode('tahun',this)">Tahunan</button>
+      </div>
+    </div>
+
+    <div style="background:white;border-radius:var(--radius);border:1px solid var(--border);padding:20px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;color:var(--teks-abu);margin-bottom:16px;display:flex;align-items:center;gap:16px">
+        <span><span style="display:inline-block;width:12px;height:12px;background:#1D9E75;border-radius:3px;margin-right:5px"></span>Pemasukan</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#E24B4A;border-radius:3px;margin-right:5px"></span>Pengeluaran</span>
+      </div>
+      <div style="position:relative;height:260px">
+        <canvas id="grafik-bar"></canvas>
+      </div>
+    </div>
+
+    <div style="background:white;border-radius:var(--radius);border:1px solid var(--border);padding:20px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;color:var(--teks-abu);margin-bottom:16px">
+        <span><span style="display:inline-block;width:12px;height:12px;background:#378ADD;border-radius:3px;margin-right:5px"></span>Perkembangan Saldo</span>
+      </div>
+      <div style="position:relative;height:200px">
+        <canvas id="grafik-saldo"></canvas>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px" id="ringkasan-angka"></div>
+
     <div class="table-wrap">
-      <div class="table-header"><h3>Ringkasan per Kategori</h3></div>
+      <div class="table-header"><h3>Rincian per Kategori (periode ini)</h3></div>
       <div style="padding:16px">
         <table id="kat-table" style="width:100%">
           <thead>
@@ -511,6 +581,7 @@
         </table>
       </div>
     </div>
+
   </div>
 
 </div>
@@ -754,14 +825,91 @@ function tambahWarga() {
   showToast('✅ Warga ditambahkan!', 'success');
 }
 
+// ===== AUTOCOMPLETE NAMA =====
+let suggestionIndex = -1;
+
+function showSuggestions(query) {
+  const box = document.getElementById('nama-suggestions');
+  const wargaData = JSON.parse(localStorage.getItem('rt_warga') || '[]');
+  const q = query.toLowerCase().trim();
+
+  // Filter warga berdasarkan ketikan
+  const filtered = wargaData.filter(w => !q || w.nama.toLowerCase().includes(q));
+
+  if (!wargaData.length) { box.style.display = 'none'; return; }
+
+  suggestionIndex = -1;
+  const items = filtered.map(w => {
+    const inisial = w.nama.split(' ').slice(0,2).map(x=>x[0]).join('').toUpperCase();
+    const warna = warnaDari(w.nama);
+    return `<div class="suggestion-item" onmousedown="pilihNama('${w.nama.replace(/'/g,"\\'")}')">
+      <div class="suggestion-avatar" style="background:${warna}">${inisial}</div>
+      <span class="suggestion-nama">${w.nama}</span>
+    </div>`;
+  });
+
+  // Jika ada ketikan yang tidak match, tambahkan opsi input bebas
+  if (q && !filtered.find(w => w.nama.toLowerCase() === q)) {
+    items.push(`<div class="suggestion-extra" onmousedown="pilihNama('${query.replace(/'/g,"\\'")}')">✏️ Gunakan "${query}"</div>`);
+  }
+
+  if (!items.length) { box.style.display = 'none'; return; }
+  box.innerHTML = items.join('');
+  box.style.display = 'block';
+}
+
+function pilihNama(nama) {
+  document.getElementById('f-nama').value = nama;
+  document.getElementById('nama-suggestions').style.display = 'none';
+  // Auto isi nominal 20000 jika kategori Iuran
+  const kat = document.getElementById('f-kategori').value;
+  if (kat === 'Iuran' && !document.getElementById('f-nominal').value) {
+    document.getElementById('f-nominal').value = 20000;
+  }
+}
+
+function navigateSuggestions(e) {
+  const box = document.getElementById('nama-suggestions');
+  const items = box.querySelectorAll('.suggestion-item');
+  if (!items.length) return;
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    suggestionIndex = Math.min(suggestionIndex + 1, items.length - 1);
+    items.forEach((el, i) => el.classList.toggle('focused', i === suggestionIndex));
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    suggestionIndex = Math.max(suggestionIndex - 1, 0);
+    items.forEach((el, i) => el.classList.toggle('focused', i === suggestionIndex));
+  } else if (e.key === 'Enter' && suggestionIndex >= 0) {
+    e.preventDefault();
+    items[suggestionIndex].dispatchEvent(new MouseEvent('mousedown'));
+  } else if (e.key === 'Escape') {
+    box.style.display = 'none';
+  }
+}
+
+// Tutup suggestion saat klik di luar
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#f-nama') && !e.target.closest('#nama-suggestions')) {
+    const box = document.getElementById('nama-suggestions');
+    if (box) box.style.display = 'none';
+  }
+});
+
 // ===== TRANSAKSI FORM =====
 function openTrx() {
   document.getElementById('f-nama').value = '';
   document.getElementById('f-nominal').value = '';
   document.getElementById('f-ket').value = '';
+  document.getElementById('nama-suggestions').style.display = 'none';
   document.getElementById('modal-transaksi').classList.add('show');
+  setTimeout(() => document.getElementById('f-nama').focus(), 100);
 }
-function closeTrx() { document.getElementById('modal-transaksi').classList.remove('show'); }
+function closeTrx() {
+  document.getElementById('modal-transaksi').classList.remove('show');
+  document.getElementById('nama-suggestions').style.display = 'none';
+}
 
 function setType(t) {
   currentType = t;
@@ -833,7 +981,7 @@ function switchTab(tab, btn) {
   document.getElementById('tab-ringkasan').style.display = 'none';
   document.getElementById('tab-'+tab).style.display = 'block';
   if (tab==='warga') renderWarga();
-  if (tab==='ringkasan') renderKategori(ALL_TRX);
+  if (tab==='ringkasan') renderGrafik(ALL_TRX);
 }
 
 // ===== UTILS =====
@@ -863,8 +1011,188 @@ function warnaDari(nama) {
   return colors[Math.abs(h) % colors.length];
 }
 
+
+// ===== GRAFIK =====
+let chartBar = null;
+let chartSaldo = null;
+let currentPeriode = 'minggu';
+
+const PERIODE_LABELS = {
+  minggu: 'minggu ini', bulan: 'bulan ini',
+  '3bulan': '3 bulan terakhir', '6bulan': '6 bulan terakhir', tahun: 'tahun ini'
+};
+
+function setPeriode(p, btn) {
+  currentPeriode = p;
+  document.querySelectorAll('.periode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('grafik-periode-label').textContent = 'Menampilkan data ' + PERIODE_LABELS[p];
+  renderGrafik(ALL_TRX);
+}
+
+function filterByPeriode(data, periode) {
+  const now = new Date();
+  let from;
+  if (periode === 'minggu') {
+    from = new Date(now); from.setDate(now.getDate() - 6); from.setHours(0,0,0,0);
+  } else if (periode === 'bulan') {
+    from = new Date(now.getFullYear(), now.getMonth(), 1);
+  } else if (periode === '3bulan') {
+    from = new Date(now); from.setMonth(now.getMonth() - 2); from.setDate(1);
+  } else if (periode === '6bulan') {
+    from = new Date(now); from.setMonth(now.getMonth() - 5); from.setDate(1);
+  } else { // tahun
+    from = new Date(now.getFullYear(), 0, 1);
+  }
+  return data.filter(r => new Date(r.tanggal) >= from);
+}
+
+function groupData(data, periode) {
+  const grouped = {};
+  const now = new Date();
+
+  data.forEach(r => {
+    const d = new Date(r.tanggal);
+    let key;
+    if (periode === 'minggu') {
+      // Per hari: Sen-Min
+      key = d.toLocaleDateString('id-ID', {weekday:'short', day:'2-digit', month:'short'});
+    } else if (periode === 'bulan') {
+      // Per minggu dalam bulan
+      const mingguKe = Math.ceil(d.getDate() / 7);
+      key = 'Minggu ' + mingguKe;
+    } else if (periode === '3bulan' || periode === '6bulan') {
+      // Per bulan
+      key = d.toLocaleDateString('id-ID', {month:'short', year:'2-digit'});
+    } else {
+      // Per bulan dalam setahun
+      key = d.toLocaleDateString('id-ID', {month:'short'});
+    }
+    if (!grouped[key]) grouped[key] = {masuk: 0, keluar: 0};
+    if (r.jenis === 'masuk') grouped[key].masuk += Number(r.nominal);
+    else grouped[key].keluar += Number(r.nominal);
+  });
+
+  // Untuk mingguan, pastikan 7 hari terisi meskipun 0
+  if (periode === 'minggu') {
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now); d.setDate(now.getDate() - i);
+      const key = d.toLocaleDateString('id-ID', {weekday:'short', day:'2-digit', month:'short'});
+      if (!grouped[key]) grouped[key] = {masuk:0, keluar:0};
+    }
+  }
+
+  return grouped;
+}
+
+function renderGrafik(data) {
+  if (!document.getElementById('grafik-bar')) return;
+
+  const filtered = filterByPeriode(data, currentPeriode);
+  const grouped = groupData(filtered, currentPeriode);
+
+  const labels = Object.keys(grouped);
+  const masukData = labels.map(k => grouped[k].masuk);
+  const keluarData = labels.map(k => grouped[k].keluar);
+
+  // Hitung saldo kumulatif per periode
+  let saldoKumulatif = 0;
+  // Ambil saldo sebelum periode dari semua data
+  const periodeStart = filterByPeriode(data, currentPeriode)[0];
+  if (periodeStart) {
+    const idx = data.findIndex(r => r.tanggal === periodeStart.tanggal && r.nama === periodeStart.nama);
+    saldoKumulatif = idx > 0 ? Number(data[idx-1].saldo) : 0;
+  }
+  const saldoData = labels.map((k, i) => {
+    saldoKumulatif += (masukData[i] - keluarData[i]);
+    return saldoKumulatif;
+  });
+
+  const commonOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: {
+      callbacks: {
+        label: ctx => ' Rp ' + Number(ctx.raw).toLocaleString('id-ID')
+      }
+    }},
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#888780' } },
+      y: {
+        grid: { color: 'rgba(0,0,0,0.05)' },
+        ticks: {
+          font: { size: 11 }, color: '#888780',
+          callback: v => 'Rp ' + (v >= 1000000 ? (v/1000000).toFixed(1)+'jt' : v >= 1000 ? (v/1000).toFixed(0)+'rb' : v)
+        }
+      }
+    }
+  };
+
+  // Bar chart
+  const ctxBar = document.getElementById('grafik-bar').getContext('2d');
+  if (chartBar) chartBar.destroy();
+  chartBar = new Chart(ctxBar, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Pemasukan',
+          data: masukData,
+          backgroundColor: 'rgba(29,158,117,0.85)',
+          borderRadius: 6, borderSkipped: false,
+        },
+        {
+          label: 'Pengeluaran',
+          data: keluarData,
+          backgroundColor: 'rgba(226,75,74,0.8)',
+          borderRadius: 6, borderSkipped: false,
+        }
+      ]
+    },
+    options: { ...commonOpts, scales: { ...commonOpts.scales, x: { ...commonOpts.scales.x, grouped: true } } }
+  });
+
+  // Line chart saldo
+  const ctxSaldo = document.getElementById('grafik-saldo').getContext('2d');
+  if (chartSaldo) chartSaldo.destroy();
+  chartSaldo = new Chart(ctxSaldo, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Saldo',
+        data: saldoData,
+        borderColor: '#378ADD',
+        backgroundColor: 'rgba(55,138,221,0.08)',
+        borderWidth: 2.5,
+        pointBackgroundColor: '#378ADD',
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        fill: true,
+        tension: 0.35
+      }]
+    },
+    options: commonOpts
+  });
+
+  // Ringkasan angka periode ini
+  const totalMasuk = masukData.reduce((a,b)=>a+b,0);
+  const totalKeluar = keluarData.reduce((a,b)=>a+b,0);
+  const net = totalMasuk - totalKeluar;
+  document.getElementById('ringkasan-angka').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Pemasukan Periode</div><div class="stat-value hijau" style="font-size:17px">${fmtRp(totalMasuk)}</div></div>
+    <div class="stat-card"><div class="stat-label">Pengeluaran Periode</div><div class="stat-value merah" style="font-size:17px">${fmtRp(totalKeluar)}</div></div>
+    <div class="stat-card"><div class="stat-label">Net Periode</div><div class="stat-value ${net>=0?'hijau':'merah'}" style="font-size:17px">${net>=0?'+':''}${fmtRp(net)}</div></div>
+    <div class="stat-card"><div class="stat-label">Jml Transaksi</div><div class="stat-value" style="font-size:17px;color:var(--abu-gelap)">${filtered.length}</div></div>
+  `;
+
+  // Kategori untuk periode ini
+  renderKategori(filtered);
+}
+
 // Auto refresh setiap 60 detik
 setInterval(loadData, 60000);
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </body>
 </html>
